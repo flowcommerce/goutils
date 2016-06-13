@@ -1,0 +1,6 @@
+code:
+  flow:
+    docker-registry:
+      version: latest
+      generators:
+        go_1_5_client: .

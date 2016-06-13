@@ -1,0 +1,6 @@
+code:
+  flow:
+    common:
+      version: latest
+      generators:
+        go_1_5_client: .
