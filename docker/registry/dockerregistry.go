@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ddliu/go-httpclient"
 	"html"
 	"io"
 	"net/http"
@@ -27,6 +28,7 @@ type Client struct {
 	Username   string
 	Password   string
 	BaseUrl    string
+	JwtToken   string
 }
 
 type ClientRequestBody struct {
@@ -297,14 +299,15 @@ type V2TagsGetResponse struct {
 
 func V2TagsGet(client Client, org string, repo string) V2TagsGetResponse {
 
-	requestUrl := fmt.Sprintf("%s/v2/repositories/%s/%s/tags", client.BaseUrl, html.EscapeString(org), html.EscapeString(repo))
+	requestUrl := fmt.Sprintf("%s/v2/repositories/%s/%s/tags/", client.BaseUrl, html.EscapeString(org), html.EscapeString(repo))
 
-	request, err := buildRequest(client, "GET", requestUrl, ClientRequestBody{})
+	request, err := buildRequestWithAuthToken(client, "GET", requestUrl, ClientRequestBody{})
 	if err != nil {
 		return V2TagsGetResponse{Error: err}
 	}
 
-	resp, err := client.HttpClient.Do(request)
+	resp, err := request.Get(requestUrl, nil)
+
 	if err != nil {
 		return V2TagsGetResponse{Error: err}
 	}
@@ -312,13 +315,13 @@ func V2TagsGet(client Client, org string, repo string) V2TagsGetResponse {
 
 	switch resp.StatusCode {
 	case 200:
-		return V2TagsGetResponse{StatusCode: resp.StatusCode, Response: resp, V2Tag: V2TagFromJson(resp.Body)}
+		return V2TagsGetResponse{StatusCode: resp.StatusCode, Response: resp.Response, V2Tag: V2TagFromJson(resp.Body)}
 
 	case 401:
-		return V2TagsGetResponse{StatusCode: resp.StatusCode, Response: resp}
+		return V2TagsGetResponse{StatusCode: resp.StatusCode, Response: resp.Response}
 
 	default:
-		return V2TagsGetResponse{StatusCode: resp.StatusCode, Response: resp, Error: errors.New(resp.Status)}
+		return V2TagsGetResponse{StatusCode: resp.StatusCode, Response: resp.Response, Error: errors.New(resp.Status)}
 	}
 
 }
@@ -342,6 +345,21 @@ func buildRequest(client Client, method, urlStr string, body ClientRequestBody) 
 
 	if client.Username != "" {
 		request.SetBasicAuth(client.Username, client.Password)
+	}
+
+	return request, nil
+
+}
+
+func buildRequestWithAuthToken(client Client, method, urlStr string, body ClientRequestBody) (*httpclient.HttpClient, error) {
+	request := httpclient.
+		WithHeader("Authorization", fmt.Sprintf("Bearer %s", client.JwtToken)).
+		WithHeader("User-Agent", UserAgent).
+		WithHeader("X-Apidoc-Version", Version).
+		WithHeader("X-Apidoc-Version-Major", strconv.Itoa(VersionMajor))
+
+	if body.contentType != "" {
+		request.WithHeader("Content-type", body.contentType)
 	}
 
 	return request, nil
