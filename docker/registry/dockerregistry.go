@@ -301,16 +301,11 @@ func V2TagsGet(client Client, org string, repo string) V2TagsGetResponse {
 
 	requestUrl := fmt.Sprintf("%s/v2/repositories/%s/%s/tags/", client.BaseUrl, html.EscapeString(org), html.EscapeString(repo))
 
-	request, err := buildRequestWithAuthToken(client, "GET", requestUrl, ClientRequestBody{})
+	resp, err := getRequestWithAuthToken(client, "GET", requestUrl, ClientRequestBody{})
 	if err != nil {
 		return V2TagsGetResponse{Error: err}
 	}
 
-	resp, err := request.Get(requestUrl, nil)
-
-	if err != nil {
-		return V2TagsGetResponse{Error: err}
-	}
 	defer resp.Body.Close()
 
 	switch resp.StatusCode {
@@ -351,7 +346,7 @@ func buildRequest(client Client, method, urlStr string, body ClientRequestBody) 
 
 }
 
-func buildRequestWithAuthToken(client Client, method, urlStr string, body ClientRequestBody) (*httpclient.HttpClient, error) {
+func getRequestWithAuthToken(client Client, method, urlStr string, body ClientRequestBody) (*httpclient.Response, error) {
 	request := httpclient.
 		WithHeader("Authorization", fmt.Sprintf("Bearer %s", client.JwtToken)).
 		WithHeader("User-Agent", UserAgent).
@@ -362,6 +357,7 @@ func buildRequestWithAuthToken(client Client, method, urlStr string, body Client
 		request.WithHeader("Content-type", body.contentType)
 	}
 
-	return request, nil
+	resp, _ := request.Get(urlStr, nil)
 
+	return resp, nil
 }
